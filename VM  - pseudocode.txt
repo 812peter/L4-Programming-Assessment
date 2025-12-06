@@ -1,0 +1,141 @@
+dict item1 = {name: Water, price: 1.00, stock: 10}
+dict item2 = {name: Soda, price: 1.20, stock: 8}
+dict item3 = {name: Energy Drink, price: 2.00, stock: 5}
+dict item4 = {name: Cookie, price: 0.50, stock: 2}
+dict item5 = {name: Crisps, price: 1.50, stock: 0}
+
+list menu = item1, item2, item3, item4, item5
+int order_num = random integer between 100 and 1000
+set allowed_coins = {0.20, 0.50, 1.00, 2.00}
+float balance = 0
+list items_bought = []
+float total_spent = 0
+float true_total = 0
+list change_given = []
+float total_money_added = 0
+str filename = ""
+
+main()
+
+FUNC main():
+    WHILE True:
+        insert_coins()
+        purchasing()
+        reset_vars()
+        OUTPUT "Next customer..."
+
+FUNC insert_coins():
+    WHILE True:
+        OUTPUT "Current balance: £{balance}"
+        INPUT "Insert a coin ({allowed_coins}) or type 'done' to finish: "
+        IF INPUT == "done":
+            BREAK
+        ELSE IF NOT check_input_coin(INPUT):
+            OUTPUT "Error: invalid input."
+
+FUNC check_input_coin(input):
+    TRY:
+        IF input in allowed_coins:
+            balance += input
+            total_money_added += input
+            RETURN True
+    EXCEPT:
+        RETURN False
+
+FUNC purchasing():
+    WHILE True:
+        print_menu()
+        INPUT "Select an item by name, or type 'add' to top up your balance, or type 'exit' to quit: "
+        IF INPUT == "exit":
+            finish()
+            BREAK
+        ELSE IF INPUT == "add":
+            insert_coins()
+        ELSE:
+            IF check_input_purchase(INPUT):
+                dict current_item = chosen item from menu
+                IF current_item[price] > balance:
+                    OUTPUT "Error: insufficient balance."#
+                ELSE IF current_item[stock] == 0:
+                    OUTPUT "Sorry, we are out of stock. Choose another item."
+                ELSE:
+                    list temp_items_bought = items_bought + [current_item]
+                    temp_true_total = true_total + current_item[price]
+                    float discount = check_discount(temp_true_total, temp_items_bought)
+                    float spent_now = current_item[price] * discount
+                    current_item[discount] = ROUND (100 * (1 - discount))
+                    balance -= spent_now
+                    true_total += current_item[price]
+                    total_spent += spent_now
+                    APPEND current_item TO items_bought
+                    current_item["stock"] -= 1
+                    OUTPUT "Dispensing item..."
+                    OUTPUT "Purchased {current_item[name]} for £{spent_now} (discount: {ROUND (100 * (1 - discount))}%)"
+            ELSE:
+                OUTPUT "Error: invalid input."
+
+FUNC check_discount(temp_true_total, temp_items_bought):
+    float total = current_total IF current_total IS NOT None ELSE total_spent
+    list items = current_items IF current_items IS NOT None ELSE items_bought
+    IF total > 7:
+        RETURN 0.85
+    ELSE IF total > 5:
+        RETURN 0.9
+    ELSE IF LENGTH (items) >= 3:
+        RETURN 0.95
+    ELSE:
+        RETURN 1
+
+FUNC check_input_purchase(input):
+    IF input in menu:
+        RETURN True
+    RETURN False
+
+FUNC print_menu():
+    OUTPUT "Vending Machine Menu"
+    OUTPUT all items in menu
+
+FUNC finish():
+    REVERSE allowed_coins
+    FOR coin IN allowed_coins:
+        WHILE balance >= coin:
+            APPEND coin TO change_given
+            balance -= coin
+    bool bonus = False
+    IF order_num % 2 == 1 AND total_spent > 2:
+        bonus = True
+        APPEND 1.0 to change_given
+    IF change_given:
+        OUTPUT "Dispensing change:"
+        FOR coin IN change_given:
+            OUTPUT "£{coin}"
+        IF bonus:
+            OUTPUT "[Bonus change of £1.00 due to odd-numbered order (#{order_num}) and spending over £2.00]"
+    ELSE:
+        OUTPUT "No change to dispense."
+    create_receipt()
+    OUTPUT "Thank you for the purchase! Have a great day!"
+
+FUNC create_receipt():
+    str filename = "receipt_{order_num}.csv"
+    WRITE INTO FILE:
+        WRITEROW "ORDER NUMBER: #{order_num}"
+        WRITEROW datetime.now()
+        WRITEROW "Count", "Item", "Price (£)", "Discount", "Final Price (£)"
+        int count = 1
+        FOR item IN items_bought:
+            WRITEROW count, item[name], item[price], item[discount], item[price] * (1 - item[discount]/100)
+            count += 1
+        WRITEROW "TOTAL SPENT", total_spent
+        WRITEROW "MONEY ADDED", total_money_added
+        WRITEROW "CHANGE GIVEN", SUM (change_given)
+    OUTPUT "Receipt created for order #{order_num}."
+
+FUNC reset_vars():
+    order_num += 1
+    balance = 0
+    items_bought = []
+    total_spent = 0
+    true_total = 0
+    change_given = []
+    total_money_added = 0
